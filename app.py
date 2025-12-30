@@ -18,7 +18,6 @@ except (FileNotFoundError, KeyError):
 # ==============================================================================
 # 🏙️ 2. 城市经纬度数据库 (拼音增强版 - 支持搜索)
 # ==============================================================================
-# 这里的 Key 改成了 "中文 (Pinyin)" 格式，这样你打英文也能搜到了
 CITY_DB = {
     # --- 直辖市 ---
     "北京 (Beijing)": {"lat": 39.90, "lng": 116.40},
@@ -145,7 +144,7 @@ def call_ai_writer(prompt, api_key):
         "temperature": 1.3
     }
     try:
-        res = requests.post("https://api.deepseek.com/chat/completions", headers=headers, json=payload, timeout=20)
+        res = requests.post("https://api.deepseek.com/chat/completions", headers=headers, json=payload, timeout=120)
         if res.status_code == 200: return res.json()['choices'][0]['message']['content']
         return f"AI 接口报错: {res.text}"
     except Exception as e:
@@ -186,7 +185,6 @@ with st.form("input_form"):
         name_a = st.text_input("姓名/昵称", value="", placeholder="必填", key="na")
         date_a = st.date_input("出生日期", min_value=min_date, max_value=max_date, value=None, key="da")
         time_a = st.time_input("出生时间 (不清楚填12:00)", value=time(12, 0), key="ta")
-        # 🟢 修复：城市加上拼音，方便搜索 "W"
         city_name_a = st.selectbox("出生城市", list(CITY_DB.keys()), index=None, placeholder="可输入拼音搜索 (如 Wuhan)", key="ca")
         gender_a = st.selectbox("性别", ["male", "female"], format_func=lambda x: "男生" if x=="male" else "女生", key="ga")
 
@@ -195,8 +193,9 @@ with st.form("input_form"):
         name_b = st.text_input("姓名/昵称", value="", placeholder="必填", key="nb")
         date_b = st.date_input("出生日期", min_value=min_date, max_value=max_date, value=None, key="db")
         time_b = st.time_input("出生时间 (不清楚填12:00)", value=time(12, 0), key="tb")
-        # 🟢 修复：同上
         city_name_b = st.selectbox("出生城市", list(CITY_DB.keys()), index=None, placeholder="可输入拼音搜索 (如 Wuhan)", key="cb")
+        # 🔥 修改处：添加 B 的性别选择
+        gender_b = st.selectbox("性别", ["male", "female"], format_func=lambda x: "男生" if x=="male" else "女生", key="gb")
 
     submitted = st.form_submit_button("🚀 开始深度鉴定")
 
@@ -206,7 +205,7 @@ if submitted:
     elif not DEEPSEEK_API_KEY:
         st.error("🔒 缺少 API Key，无法启动 AI。")
     else:
-        with st.spinner('🔭 正在连接宇宙能量场...'):
+        with st.spinner('🔭 正在连接宇宙能量场...时间可能会长一点'):
             try:
                 loc_a = CITY_DB.get(city_name_a, CITY_DB["其他 (Default)"])
                 loc_b = CITY_DB.get(city_name_b, CITY_DB["其他 (Default)"])
@@ -218,14 +217,30 @@ if submitted:
                 raw_aspects = synastry.get_relevant_aspects()
                 score, radar, filtered_aspects = calculate_commercial_score(raw_aspects)
 
-                moon_desc = get_sign_keyword('Moon', sub_a.moon['sign'])
+                # 🔥 修改处：双向性别逻辑生成
+                # 主角 A 分析
+                moon_desc_a = get_sign_keyword('Moon', sub_a.moon['sign'])
+                sun_desc_a = get_sign_keyword('Sun', sub_a.sun['sign'])
                 if gender_a == 'male':
-                    target_desc = get_sign_keyword('Venus', sub_a.venus['sign'])
-                    gender_prompt = f"他(男)外表{get_sign_keyword('Sun', sub_a.sun['sign'])}，内心{moon_desc}，喜欢{target_desc}。"
+                    target_desc_a = get_sign_keyword('Venus', sub_a.venus['sign'])
+                    desc_a_str = f"A({name_a},男): 外表{sun_desc_a}, 内心{moon_desc_a}, 喜欢{target_desc_a}型。"
                 else:
-                    target_desc = get_sign_keyword('Mars', sub_a.mars['sign'])
-                    gender_prompt = f"她(女)外表{get_sign_keyword('Sun', sub_a.sun['sign'])}，内心{moon_desc}，容易被{target_desc}吸引。"
+                    target_desc_a = get_sign_keyword('Mars', sub_a.mars['sign'])
+                    desc_a_str = f"A({name_a},女): 外表{sun_desc_a}, 内心{moon_desc_a}, 易被{target_desc_a}吸引。"
+
+                # 主角 B 分析
+                moon_desc_b = get_sign_keyword('Moon', sub_b.moon['sign'])
+                sun_desc_b = get_sign_keyword('Sun', sub_b.sun['sign'])
+                if gender_b == 'male':
+                    target_desc_b = get_sign_keyword('Venus', sub_b.venus['sign'])
+                    desc_b_str = f"B({name_b},男): 外表{sun_desc_b}, 内心{moon_desc_b}, 喜欢{target_desc_b}型。"
+                else:
+                    target_desc_b = get_sign_keyword('Mars', sub_b.mars['sign'])
+                    desc_b_str = f"B({name_b},女): 外表{sun_desc_b}, 内心{moon_desc_b}, 易被{target_desc_b}吸引。"
+
+                gender_prompt = f"{desc_a_str}\n{desc_b_str}"
                 
+                # 下面保持不变
                 sorted_aspects = sorted(filtered_aspects, key=lambda x: 0 if x['aspect'] in ['conjunction', 'opposition'] else 1)
                 top_aspects = []
                 risk_flag = False
@@ -243,13 +258,14 @@ if submitted:
                 【角色】毒舌恋爱鉴定师。分析CP (匹配度{score}%)。基调：{tone}
                 【输入】
                 雷达图：激情{radar['P']}, 沟通{radar['C']}, 稳定{radar['S']}, 三观{radar['V']}
-                主角A揭秘：{gender_prompt}
+                主角揭秘：
+                {gender_prompt}
                 星象证据：{"; ".join(top_aspects)}
                 【要求】(小红书风)
                 1. 🏷️CP毒舌标签
                 2. 💖缘分深度 (是宿命还是孽缘？)
                 3. 💣潜伏危机 (重点！根据星象证据指出隐患)
-                4. 💡拿捏指南 (怎么搞定A？)
+                4. 💡拿捏指南 (结合双方喜好，给A出招搞定B)
                 """
                 
                 report = call_ai_writer(prompt, DEEPSEEK_API_KEY)
