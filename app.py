@@ -185,12 +185,15 @@ with st.form("input_form"):
         name_a = st.text_input("姓名/昵称", value="", placeholder="必填", key="na")
         date_a = st.date_input("出生日期", min_value=min_date, max_value=max_date, value=None, key="da")
         
-        # 🔥 修改 1：step=60 允许精确到分钟选择
-        time_a = st.time_input("出生时间", value=time(12, 0), step=60, key="ta")
+        # 🔥 修改处：时间拆分为小时和分钟两个下拉框
+        st.markdown("<label style='font-size: 14px;'>出生时间</label>", unsafe_allow_html=True)
+        t_col_a1, t_col_a2 = st.columns(2)
+        with t_col_a1:
+            hour_a = st.selectbox("时", range(24), index=12, format_func=lambda x: f"{x:02d}时", key="ha_h")
+        with t_col_a2:
+            minute_a = st.selectbox("分", range(60), index=0, format_func=lambda x: f"{x:02d}分", key="ha_m")
         
         city_name_a = st.selectbox("出生城市", list(CITY_DB.keys()), index=None, placeholder="可输入拼音搜索 (如 Wuhan)", key="ca")
-        
-        # 🔥 修改 2：index=1 默认选中“女生”
         gender_a = st.selectbox("性别", ["male", "female"], index=1, format_func=lambda x: "男生" if x=="male" else "女生", key="ga")
 
     with col2:
@@ -198,12 +201,15 @@ with st.form("input_form"):
         name_b = st.text_input("姓名/昵称", value="", placeholder="必填", key="nb")
         date_b = st.date_input("出生日期", min_value=min_date, max_value=max_date, value=None, key="db")
         
-        # 🔥 修改 1：step=60 允许精确到分钟选择
-        time_b = st.time_input("出生时间", value=time(12, 0), step=60, key="tb")
+        # 🔥 修改处：时间拆分为小时和分钟两个下拉框
+        st.markdown("<label style='font-size: 14px;'>出生时间</label>", unsafe_allow_html=True)
+        t_col_b1, t_col_b2 = st.columns(2)
+        with t_col_b1:
+            hour_b = st.selectbox("时", range(24), index=12, format_func=lambda x: f"{x:02d}时", key="hb_h")
+        with t_col_b2:
+            minute_b = st.selectbox("分", range(60), index=0, format_func=lambda x: f"{x:02d}分", key="hb_m")
         
         city_name_b = st.selectbox("出生城市", list(CITY_DB.keys()), index=None, placeholder="可输入拼音搜索 (如 Wuhan)", key="cb")
-        
-        # 🔥 修改 2：index=0 默认选中“男生”，形成默认一男一女
         gender_b = st.selectbox("性别", ["male", "female"], index=0, format_func=lambda x: "男生" if x=="male" else "女生", key="gb")
 
     submitted = st.form_submit_button("🚀 开始深度鉴定")
@@ -219,8 +225,9 @@ if submitted:
                 loc_a = CITY_DB.get(city_name_a, CITY_DB["其他 (Default)"])
                 loc_b = CITY_DB.get(city_name_b, CITY_DB["其他 (Default)"])
 
-                sub_a = AstrologicalSubject(name_a, date_a.year, date_a.month, date_a.day, time_a.hour, time_a.minute, lng=loc_a['lng'], lat=loc_a['lat'], tz_str="Asia/Shanghai")
-                sub_b = AstrologicalSubject(name_b, date_b.year, date_b.month, date_b.day, time_b.hour, time_b.minute, lng=loc_b['lng'], lat=loc_b['lat'], tz_str="Asia/Shanghai")
+                # 🔥 修改处：直接使用拆分的 hour 和 minute 变量
+                sub_a = AstrologicalSubject(name_a, date_a.year, date_a.month, date_a.day, hour_a, minute_a, lng=loc_a['lng'], lat=loc_a['lat'], tz_str="Asia/Shanghai")
+                sub_b = AstrologicalSubject(name_b, date_b.year, date_b.month, date_b.day, hour_b, minute_b, lng=loc_b['lng'], lat=loc_b['lat'], tz_str="Asia/Shanghai")
 
                 synastry = SynastryAspects(sub_a, sub_b)
                 raw_aspects = synastry.get_relevant_aspects()
