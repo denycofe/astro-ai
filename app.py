@@ -184,18 +184,27 @@ with st.form("input_form"):
         st.subheader("主角 A (自己)")
         name_a = st.text_input("姓名/昵称", value="", placeholder="必填", key="na")
         date_a = st.date_input("出生日期", min_value=min_date, max_value=max_date, value=None, key="da")
-        time_a = st.time_input("出生时间 (不清楚填12:00)", value=time(12, 0), key="ta")
+        
+        # 🔥 修改 1：step=60 允许精确到分钟选择
+        time_a = st.time_input("出生时间", value=time(12, 0), step=60, key="ta")
+        
         city_name_a = st.selectbox("出生城市", list(CITY_DB.keys()), index=None, placeholder="可输入拼音搜索 (如 Wuhan)", key="ca")
-        gender_a = st.selectbox("性别", ["male", "female"], format_func=lambda x: "男生" if x=="male" else "女生", key="ga")
+        
+        # 🔥 修改 2：index=1 默认选中“女生”
+        gender_a = st.selectbox("性别", ["male", "female"], index=1, format_func=lambda x: "男生" if x=="male" else "女生", key="ga")
 
     with col2:
         st.subheader("主角 B (对象)")
         name_b = st.text_input("姓名/昵称", value="", placeholder="必填", key="nb")
         date_b = st.date_input("出生日期", min_value=min_date, max_value=max_date, value=None, key="db")
-        time_b = st.time_input("出生时间 (不清楚填12:00)", value=time(12, 0), key="tb")
+        
+        # 🔥 修改 1：step=60 允许精确到分钟选择
+        time_b = st.time_input("出生时间", value=time(12, 0), step=60, key="tb")
+        
         city_name_b = st.selectbox("出生城市", list(CITY_DB.keys()), index=None, placeholder="可输入拼音搜索 (如 Wuhan)", key="cb")
-        # 🔥 修改处：添加 B 的性别选择
-        gender_b = st.selectbox("性别", ["male", "female"], format_func=lambda x: "男生" if x=="male" else "女生", key="gb")
+        
+        # 🔥 修改 2：index=0 默认选中“男生”，形成默认一男一女
+        gender_b = st.selectbox("性别", ["male", "female"], index=0, format_func=lambda x: "男生" if x=="male" else "女生", key="gb")
 
     submitted = st.form_submit_button("🚀 开始深度鉴定")
 
@@ -205,7 +214,7 @@ if submitted:
     elif not DEEPSEEK_API_KEY:
         st.error("🔒 缺少 API Key，无法启动 AI。")
     else:
-        with st.spinner('🔭 正在连接宇宙能量场...时间可能会长一点'):
+        with st.spinner('🔭 正在连接宇宙能量场...'):
             try:
                 loc_a = CITY_DB.get(city_name_a, CITY_DB["其他 (Default)"])
                 loc_b = CITY_DB.get(city_name_b, CITY_DB["其他 (Default)"])
@@ -217,7 +226,7 @@ if submitted:
                 raw_aspects = synastry.get_relevant_aspects()
                 score, radar, filtered_aspects = calculate_commercial_score(raw_aspects)
 
-                # 🔥 修改处：双向性别逻辑生成
+                # 双向性别逻辑生成
                 # 主角 A 分析
                 moon_desc_a = get_sign_keyword('Moon', sub_a.moon['sign'])
                 sun_desc_a = get_sign_keyword('Sun', sub_a.sun['sign'])
